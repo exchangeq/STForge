@@ -106,12 +106,11 @@ fun StForgeApp(context: Context) {
             msg = msg,
             context = context,
             onBack = {
-                if (card.name.isNotBlank()) {
+                val draft = card
+                if (draft.name.isNotBlank()) {
                     scope.launch {
-                        runCatching {
-                            card = withContext(Dispatchers.IO) { CardStore.save(context, card) }
-                            refresh()
-                        }.onFailure { msg = "自动保存失败：${it.message ?: ""}" }
+                        runCatching { withContext(Dispatchers.IO) { CardStore.save(context, draft) }; refresh() }
+                            .onFailure { msg = "自动保存失败：${it.message ?: ""}" }
                     }
                 }
                 screen = "library"
