@@ -2,6 +2,7 @@ package com.wunding.stforge.data
 
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import java.io.File
 
 object CardStore {
@@ -25,7 +26,11 @@ object CardStore {
     fun importCard(ctx: Context, uri: Uri): StCard {
         val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: throw IllegalStateException("读不到文件")
-        val name = uri.lastPathSegment.orEmpty().substringBeforeLast('.')
+        val name = runCatching {
+            ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0).orEmpty().substringBeforeLast('.') else ""
+            }.orEmpty()
+        }.getOrNull().orEmpty().ifBlank { uri.lastPathSegment.orEmpty().substringBeforeLast('.') }
         if (bytes.size > 2 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()) {
             return save(ctx, AistCard.fromAist(bytes, name).copy(id = "", updatedAt = System.currentTimeMillis()))
         }

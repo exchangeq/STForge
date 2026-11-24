@@ -108,20 +108,23 @@ data class StCard(
                 }
             }
             fun arrOf(key: String): List<String> = d.optJSONArray(key)?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+            fun arrOf(key: String, holder: JSONObject): List<String> = arrOf(key).ifEmpty {
+                holder.optJSONArray(key)?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
+            }
             val extId = d.optJSONObject("extensions")?.optJSONObject("stforge")?.optString("id").orEmpty()
             return StCard(
                 id = extId.ifBlank { "imp-" + System.currentTimeMillis().toString(36) },
-                name = d.optString("name").ifBlank { "未命名角色" },
-                description = d.optString("description"),
-                personality = d.optString("personality"),
-                scenario = d.optString("scenario"),
-                firstMes = d.optString("first_mes"),
-                mesExample = d.optString("mes_example"),
-                creatorNotes = d.optString("creator_notes"),
-                systemPrompt = d.optString("system_prompt"),
-                postHistory = d.optString("post_history_instructions"),
-                tags = arrOf("tags"),
-                alternates = arrOf("alternate_greetings"),
+                name = d.optString("name").ifBlank { o.optString("name") }.ifBlank { "未命名角色" },
+                description = d.optString("description").ifBlank { o.optString("description") },
+                personality = d.optString("personality").ifBlank { o.optString("personality") },
+                scenario = d.optString("scenario").ifBlank { o.optString("scenario") },
+                firstMes = d.optString("first_mes").ifBlank { o.optString("first_mes") },
+                mesExample = d.optString("mes_example").ifBlank { o.optString("mes_example") },
+                creatorNotes = d.optString("creator_notes").ifBlank { o.optString("creator_notes") },
+                systemPrompt = d.optString("system_prompt").ifBlank { o.optString("system_prompt") },
+                postHistory = d.optString("post_history_instructions").ifBlank { o.optString("post_history_instructions") },
+                tags = if (d.has("tags")) arrOf("tags") else arrOf("tags", o),
+                alternates = if (d.has("alternate_greetings")) arrOf("alternate_greetings") else arrOf("alternate_greetings", o),
                 entries = entries,
                 creator = d.optString("creator", "Wunding Studio"),
                 version = d.optString("character_version", "1.0"),

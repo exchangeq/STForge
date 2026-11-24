@@ -74,6 +74,12 @@ fun StForgeApp(context: Context) {
     fun refresh() { cards = CardStore.list(context) }
 
     LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(msg) {
+        if (msg.isNotBlank()) {
+            kotlinx.coroutines.delay(3500)
+            msg = ""
+        }
+    }
 
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) scope.launch {
@@ -99,7 +105,17 @@ fun StForgeApp(context: Context) {
             step = step,
             msg = msg,
             context = context,
-            onBack = { screen = "library" },
+            onBack = {
+                if (card.name.isNotBlank()) {
+                    scope.launch {
+                        runCatching {
+                            card = withContext(Dispatchers.IO) { CardStore.save(context, card) }
+                            refresh()
+                        }.onFailure { msg = "自动保存失败：${it.message ?: ""}" }
+                    }
+                }
+                screen = "library"
+            },
             onChange = { card = it },
             onStep = { step = it },
             onSave = {
@@ -120,14 +136,18 @@ fun StForgeApp(context: Context) {
                         card = saved
                         withContext(Dispatchers.IO) { CardStore.exportAist(context, saved) }
                     }
-                        .onSuccess { share(context, it) }
+                        .onSuccess { runCatching { share(context, it) }.onFailure { e -> msg = "分享失败：${e.message ?: ""}" } }
                         .onFailure { msg = "导出失败：${it.message ?: ""}" }
                 }
             },
             onCopyIndex = {
-                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                cm.setPrimaryClip(android.content.ClipData.newPlainText("index-entry", com.wunding.stforge.data.AistCard.indexEntry(card)))
-                msg = "仓库 index.json 条目已复制"
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) { CardStore.save(context, card) }
+                    card = saved
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("index-entry", com.wunding.stforge.data.AistCard.indexEntry(saved)))
+                    msg = "仓库 index.json 条目已复制（id=${saved.id}）"
+                }
             },
         )
         "preview" -> PreviewScreen(
@@ -148,6 +168,7 @@ private fun LibraryScreen(
     onImport: () -> Unit, onDelete: (StCard) -> Unit, onDuplicate: (StCard) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    var deleteTarget by remember { mutableStateOf<StCard?>(null) }
     val visible = cards.filter { query.isBlank() || it.name.contains(query, true) || it.tags.any { t -> t.contains(query, true) } }
 
     Scaffold(
@@ -194,11 +215,19 @@ private fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(visible, key = { it.id }) { c ->
-                        CardTile(c, onOpen = { onOpen(c) }, onDelete = { onDelete(c) }, onDuplicate = { onDuplicate(c) })
+                        CardTile(c, onOpen = { onOpen(c) }, onDelete = { deleteTarget = c }, onDuplicate = { onDuplicate(c) })
                     }
                 }
             }
         }
+    }
+    deleteTarget?.let { target ->
+        CooldownDeleteDialog(
+            title = "删除这张卡片？",
+            message = "「${target.name.ifBlank { "未命名" }}」会从本地卡片库删除，不可恢复；建议先导出 .aist 备份。",
+            onConfirm = { onDelete(target); deleteTarget = null },
+            onDismiss = { deleteTarget = null },
+        )
     }
 }
 
@@ -513,10 +542,15 @@ private fun PreviewScreen(card: StCard, altIndex: Int, context: Context, onAlt: 
 
 private fun share(context: Context, file: File) {
     val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
+    val mime = when {
+        file.name.endsWith(".png") -> "image/png"
+        file.name.endsWith(".aist") -> "application/zip"
+        else -> "application/json"
+    }
     val intent = Intent(Intent.ACTION_SEND).apply {
-        type = if (file.name.endsWith(".png")) "image/png" else "application/json"
+        type = mime
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(intent, "导出角色卡").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    context.startActivity(Intent.createChooser(intent, "分享人设包").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }

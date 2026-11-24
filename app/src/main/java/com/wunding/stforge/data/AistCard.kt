@@ -163,6 +163,11 @@ object AistCard {
         val position = ai.lineSequence().firstOrNull { it.startsWith("- 定位：") }?.removePrefix("- 定位：")?.trim().orEmpty()
         val main = files["主设定.md"].orEmpty()
         val redline = files["扩展包-互动与红线.md"].orEmpty()
+        val extraPacks = files.filterKeys { it.startsWith("扩展包-") && it != "扩展包-互动与红线.md" }
+            .entries.joinToString("\n\n") { (file, body) ->
+                val title = file.removeSuffix(".md")
+                "【$title】\n" + body.trim()
+            }
         return StCard(
             name = name,
             tags = position.split("·").map { it.trim() }.filter { it.isNotBlank() }.take(4),
@@ -172,8 +177,8 @@ object AistCard {
             firstMes = section(main, "四、开场").orEmpty(),
             mesExample = section(main, "五、对话示例").orEmpty(),
             systemPrompt = section(main, "六、边界与演绎原则").orEmpty(),
-            creatorNotes = redline,
-            entries = files["扩展包-日常.md"]?.let { listOf(BookEntry(keys = listOf("日常", "场景"), content = it.take(500), insertionOrder = 1)) }.orEmpty(),
+            creatorNotes = listOf(redline.trim(), extraPacks).filter { it.isNotBlank() }.joinToString("\n\n"),
+            entries = files["扩展包-日常.md"]?.let { listOf(BookEntry(keys = listOf("日常", "场景"), content = it.take(600), insertionOrder = 1, constant = true)) }.orEmpty(),
         )
     }
 
@@ -184,7 +189,8 @@ object AistCard {
         return JSONObject().apply {
             put("id", id)
             put("name", card.name.trim().ifBlank { "未命名角色" })
-            put("desc", (card.tags.take(2).joinToString(" · ").ifBlank { "原创角色" }) + "｜" + position(card))
+            val tagText = card.tags.take(2).joinToString(" · ")
+            put("desc", if (tagText.isBlank()) position(card) else tagText + "｜" + position(card))
             put("file", "packs/$id.aist")
             put("format", "aist")
             put("type", "main")
