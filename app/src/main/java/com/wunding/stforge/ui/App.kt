@@ -115,7 +115,11 @@ fun StForgeApp(context: Context) {
                 val issue = cardIssue(card)
                 if (issue != null) msg = issue
                 else scope.launch {
-                    runCatching { withContext(Dispatchers.IO) { CardStore.exportAist(context, CardStore.save(context, card)) } }
+                    runCatching {
+                        val saved = withContext(Dispatchers.IO) { CardStore.save(context, card) }
+                        card = saved
+                        withContext(Dispatchers.IO) { CardStore.exportAist(context, saved) }
+                    }
                         .onSuccess { share(context, it) }
                         .onFailure { msg = "导出失败：${it.message ?: ""}" }
                 }
