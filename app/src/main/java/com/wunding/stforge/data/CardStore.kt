@@ -25,12 +25,21 @@ object CardStore {
     fun importCard(ctx: Context, uri: Uri): StCard {
         val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: throw IllegalStateException("读不到文件")
-        val name = uri.lastPathSegment.orEmpty()
+        val name = uri.lastPathSegment.orEmpty().substringBeforeLast('.')
+        if (bytes.size > 2 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()) {
+            return save(ctx, AistCard.fromAist(bytes, name).copy(id = "", updatedAt = System.currentTimeMillis()))
+        }
         val json = if (bytes.size >= 8 && bytes[0] == 0x89.toByte() && bytes[1] == 'P'.code.toByte()) {
             PngCard.extractChara(bytes) ?: throw IllegalStateException("这张 PNG 里没有 chara 数据，不是 SillyTavern 角色卡")
         } else String(bytes, Charsets.UTF_8)
         val card = StCard.fromJson(json)
         return save(ctx, card.copy(id = "", updatedAt = System.currentTimeMillis()))
+    }
+
+    fun exportAist(ctx: Context, card: StCard): File {
+        val f = File(exportDir(ctx), AistCard.exportName(card))
+        f.writeBytes(AistCard.build(card))
+        return f
     }
 
     fun exportJson(ctx: Context, card: StCard): File {

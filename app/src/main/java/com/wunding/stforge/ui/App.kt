@@ -111,28 +111,19 @@ fun StForgeApp(context: Context) {
                 }
             },
             onPreview = { previewAlt = -1; screen = "preview" },
-            onExportPng = {
+            onExportAist = {
                 val issue = cardIssue(card)
                 if (issue != null) msg = issue
                 else scope.launch {
-                    runCatching { withContext(Dispatchers.IO) { CardStore.exportPng(context, CardStore.save(context, card)) } }
+                    runCatching { withContext(Dispatchers.IO) { CardStore.exportAist(context, CardStore.save(context, card)) } }
                         .onSuccess { share(context, it) }
                         .onFailure { msg = "导出失败：${it.message ?: ""}" }
                 }
             },
-            onExportJson = {
-                val issue = cardIssue(card)
-                if (issue != null) msg = issue
-                else scope.launch {
-                    runCatching { withContext(Dispatchers.IO) { CardStore.exportJson(context, CardStore.save(context, card)) } }
-                        .onSuccess { share(context, it) }
-                        .onFailure { msg = "导出失败：${it.message ?: ""}" }
-                }
-            },
-            onCopyJson = {
+            onCopyIndex = {
                 val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                cm.setPrimaryClip(android.content.ClipData.newPlainText("chara_card_v2", card.toV2Json()))
-                msg = "JSON 已复制到剪贴板"
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("index-entry", com.wunding.stforge.data.AistCard.indexEntry(card)))
+                msg = "仓库 index.json 条目已复制"
             },
         )
         "preview" -> PreviewScreen(
@@ -250,8 +241,8 @@ private fun CardTile(c: StCard, onOpen: () -> Unit, onDelete: () -> Unit, onDupl
 private fun EditorScreen(
     card: StCard, step: Int, msg: String, context: Context,
     onBack: () -> Unit, onChange: (StCard) -> Unit, onStep: (Int) -> Unit,
-    onSave: () -> Unit, onPreview: () -> Unit, onExportPng: () -> Unit,
-    onExportJson: () -> Unit, onCopyJson: () -> Unit,
+    onSave: () -> Unit, onPreview: () -> Unit, onExportAist: () -> Unit,
+    onCopyIndex: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -295,7 +286,7 @@ private fun EditorScreen(
                 1 -> StepSetting(card, onChange)
                 2 -> StepBook(card, onChange)
                 3 -> StepOpening(card, onChange)
-                else -> StepExport(card, onExportPng, onExportJson, onCopyJson)
+                else -> StepExport(card, onExportAist, onCopyIndex)
             }
         }
     }
@@ -412,7 +403,7 @@ private fun StepOpening(card: StCard, onChange: (StCard) -> Unit) {
 }
 
 @Composable
-private fun StepExport(card: StCard, onPng: () -> Unit, onJson: () -> Unit, onCopy: () -> Unit) {
+private fun StepExport(card: StCard, onAist: () -> Unit, onCopyIndex: () -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface) {
@@ -436,22 +427,25 @@ private fun StepExport(card: StCard, onPng: () -> Unit, onJson: () -> Unit, onCo
             }
         }
         item {
-            Text("PNG 角色卡：把 chara_card_v2 JSON 写进 PNG 的 tEXt，SillyTavern / 酒馆类前端可直接导入。", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("AI 人设压缩包（.aist）：与 PocketForge-Personas 仓库完全一致的目录结构，可直接上传仓库或导入支持 aist 的 App。", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item {
-            Button(onClick = onPng, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Image, null, Modifier.size(17.dp)); Spacer(Modifier.width(6.dp)); Text("导出 PNG 角色卡", fontSize = 13.sp)
+            Button(onClick = onAist, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.FileDownload, null, Modifier.size(17.dp)); Spacer(Modifier.width(6.dp)); Text("导出 AI 人设包 .aist", fontSize = 13.sp)
             }
         }
         item {
-            OutlinedButton(onClick = onJson, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.FileDownload, null, Modifier.size(17.dp)); Spacer(Modifier.width(6.dp)); Text("导出 JSON（v2）", fontSize = 13.sp)
+            Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.padding(11.dp)) {
+                    Text("包内结构（严格对齐仓库）", fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
+                    Text("{id}/AI.md\n{id}/主设定.md\n{id}/扩展包-日常.md\n{id}/扩展包-互动与红线.md\n{id}/扩展包-病娇.md 或 扩展包-囚禁向.md（仅成熟题材）", fontSize = 9.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 15.sp)
+                }
             }
         }
         item {
-            TextButton(onClick = onCopy, modifier = Modifier.fillMaxWidth()) { Text("复制 JSON 到剪贴板", fontSize = 11.sp) }
+            TextButton(onClick = onCopyIndex, modifier = Modifier.fillMaxWidth()) { Text("复制仓库 index.json 条目", fontSize = 11.sp) }
         }
-        item { Text("导出后走系统分享，可直接存到文件管理器或发给自己。", fontSize = 9.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { Text("导出后走系统分享；上传仓库时用 index.json 条目 + packs/{id}.aist 即可。", fontSize = 9.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
