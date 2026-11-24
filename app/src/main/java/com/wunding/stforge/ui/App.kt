@@ -412,7 +412,7 @@ private fun StepBook(card: StCard, onChange: (StCard) -> Unit) {
 @Composable
 private fun StepOpening(card: StCard, onChange: (StCard) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(vertical = 6.dp)) {
-        item { Field("开场白（first_mes）", card.firstMes, { onChange(card.copy(firstMes = it)) }, 6, "用括号写动作，第一句别急着解释设定") }
+        item { Field("开场白（first_mes）", card.firstMes, { onChange(card.copy(firstMes = it)) }, 6, "可选。写一句能直接进入情境的台词；留空则由角色即兴开场") }
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("备用开场 · ${card.alternates.size}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
@@ -485,7 +485,7 @@ private fun PreviewScreen(card: StCard, altIndex: Int, context: Context, onAlt: 
     val opening = when {
         altIndex >= 0 && altIndex < card.alternates.size -> card.alternates[altIndex]
         card.firstMes.isNotBlank() -> card.firstMes
-        else -> "（还没有开场白，去第 4 步写一句）"
+        else -> "（本包没有固定开场：角色会按当前场景自然开口）"
     }
     Scaffold(
         containerColor = Color(0xFF070B12),
