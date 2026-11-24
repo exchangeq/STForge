@@ -51,12 +51,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-private val steps = listOf("基本", "设定", "世界书", "开场", "导出")
+private val steps = listOf("基本", "设定", "世界书", "开场*", "导出")
 
 /** 导出前的必备项校验，避免产出无法被 SillyTavern 识别的空卡。 */
 private fun cardIssue(c: StCard): String? = when {
     c.name.isBlank() -> "请先在「基本」填写角色名"
-    c.firstMes.isBlank() -> "请先在「开场」填写第一条消息（first_mes）"
     c.description.isBlank() -> "请先在「设定」填写角色描述"
     else -> null
 }
@@ -190,7 +189,7 @@ private fun LibraryScreen(
             Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp, top = 12.dp), verticalAlignment = Alignment.Bottom) {
                 Column(Modifier.weight(1f)) {
                     Text("STForge", fontSize = 30.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                    Text("角色卡工作台 · 写设定、排世界书、一键出 SillyTavern PNG", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("角色卡工作台 · 写设定、排世界书、一键出 AI 人设包 .aist", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("${cards.size} 张", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -444,15 +443,15 @@ private fun StepExport(card: StCard, onAist: () -> Unit, onCopyIndex: () -> Unit
                     val checks = listOf(
                         "名字" to card.name.isNotBlank(),
                         "描述 ≥ 100 字" to (card.description.length >= 100),
-                        "开场白" to card.firstMes.isNotBlank(),
+                        "开场白（可选）" to card.firstMes.isNotBlank(),
                         "世界书 ≥ 1 条" to card.entries.isNotEmpty(),
                         "系统提示词" to card.systemPrompt.isNotBlank(),
                     )
                     checks.forEach { (label, ok) ->
                         Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(if (ok) Icons.Default.Check else Icons.Default.Add, null, Modifier.size(14.dp), tint = if (ok) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error)
+                            Icon(if (ok) Icons.Default.Check else Icons.Default.Add, null, Modifier.size(14.dp), tint = when { ok -> MaterialTheme.colorScheme.secondary; label.contains("可选") -> MaterialTheme.colorScheme.onSurfaceVariant; else -> MaterialTheme.colorScheme.error })
                             Spacer(Modifier.width(6.dp))
-                            Text(label, fontSize = 10.5.sp, color = if (ok) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error)
+                            Text(label, fontSize = 10.5.sp, color = if (ok || label.contains("可选")) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
                         }
                     }
                 }

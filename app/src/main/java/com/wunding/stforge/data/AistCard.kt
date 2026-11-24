@@ -71,9 +71,11 @@ object AistCard {
             appendLine("## 三、关系与场景")
             appendLine(card.scenario.trim().ifBlank { "你们已经认识一段时间，关系停在「比朋友多一点、还没说破」的位置。" })
             appendLine()
-            appendLine("## 四、开场")
-            appendLine(card.firstMes.trim().ifBlank { "（抬头看见你，停下手里的动作）……来了。先坐吧。" })
-            appendLine()
+            if (card.firstMes.isNotBlank()) {
+                appendLine("## 四、开场")
+                appendLine(card.firstMes.trim())
+                appendLine()
+            }
             appendLine("## 五、对话示例")
             appendLine(card.mesExample.trim().ifBlank { "<START>\n{{user}}: 今天怎么样？\n{{char}}: 还行。……你呢，怎么这么晚还在外面。" })
             appendLine()
